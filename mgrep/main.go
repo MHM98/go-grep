@@ -49,7 +49,7 @@ func main() {
 		discoverDirs(&wl, args.SearchPath)
 		wl.Finilize(numWorkers)
 	}()
-//thisistest
+
 	for i := 0; i < numWorkers; i++ {
 		workersWg.Add(1)
 		go func() {

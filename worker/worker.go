@@ -2,7 +2,10 @@ package worker
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -27,6 +30,7 @@ func FindInFile(path, find string) *Results {
 		fmt.Printf("Error openning file. err is :%v", err)
 		return nil
 	}
+	defer file.Close()
 	results := Results{Inner: make([]Result, 0)}
 
 	scanner := bufio.NewScanner(file)
@@ -42,4 +46,20 @@ func FindInFile(path, find string) *Results {
 		return nil
 	}
 	return &results
+}
+
+func isBinaryFile(file *os.File) {
+	buf := make([]byte, 512)
+	_, err := file.Read(buf)
+	if err != nil {
+		if !errors.Is(err, io.EOF) {
+			fmt.Printf("error while reading %s content. err is :%s\n", file.Name(), err)
+			return
+		}
+	}
+	// use  github.com/gabriel-vasile/mimetype
+	// package to detect mimetype
+	mimeType := http.DetectContentType(buf)
+	fmt.Printf("%s mimetype is%s \n", file.Name(), mimeType)
+
 }
