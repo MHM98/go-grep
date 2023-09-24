@@ -2,12 +2,11 @@ package worker
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
+
+	"github.com/gabriel-vasile/mimetype"
 )
 
 type Result struct {
@@ -27,10 +26,14 @@ func NewResult(line string, lineNum int, path string) Result {
 func FindInFile(path, find string) *Results {
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Printf("Error openning file. err is :%v", err)
+		fmt.Printf("Error openning file. err is :%s", err)
 		return nil
 	}
 	defer file.Close()
+
+	if isBinaryFile(file) {
+		return nil
+	}
 	results := Results{Inner: make([]Result, 0)}
 
 	scanner := bufio.NewScanner(file)
@@ -48,18 +51,17 @@ func FindInFile(path, find string) *Results {
 	return &results
 }
 
-func isBinaryFile(file *os.File) {
-	buf := make([]byte, 512)
-	_, err := file.Read(buf)
-	if err != nil {
-		if !errors.Is(err, io.EOF) {
-			fmt.Printf("error while reading %s content. err is :%s\n", file.Name(), err)
-			return
-		}
-	}
-	// use  github.com/gabriel-vasile/mimetype
-	// package to detect mimetype
-	mimeType := http.DetectContentType(buf)
-	fmt.Printf("%s mimetype is%s \n", file.Name(), mimeType)
+func isBinaryFile(file *os.File) bool {
 
+	mimeType, err := mimetype.DetectReader(file)
+	if err != nil {
+		fmt.Printf("could not detect %s mime type. err is : %s\n", file.Name(), err)
+		return true
+	}
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		fmt.Printf("could not seek to origin of %s. err is : %s\n ", file.Name(), err)
+		return true
+	}
+	return mimeType.Is("application/x-mach-binary")
 }
